@@ -1,0 +1,11 @@
+node_modules
+dist
+out
+.ai-desktop
+.worktrees
+*.local
+*.log
+.DS_Store
+
+release
+*.tsbuildinfo

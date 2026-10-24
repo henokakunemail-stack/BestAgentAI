@@ -1,0 +1,26 @@
+appId: com.henok.aidesktop
+productName: AI Desktop
+electronDist: node_modules/electron/dist
+electronVersion: 35.7.5
+directories:
+  output: release
+files:
+  - out/**
+  - package.json
+asarUnpack:
+  - node_modules/@lydell/**
+win:
+  target:
+    - target: nsis
+      arch: x64
+  # ponytail: skips rcedit (exe icon/version) + winCodeSign download, which needs symlink rights; drop when signing/icon added.
+  signAndEditExecutable: false
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: AI Desktop
+  deleteAppDataOnUninstall: false
+artifactName: AI-Desktop-Setup-${version}.${ext}
