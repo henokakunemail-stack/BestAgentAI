@@ -18,7 +18,7 @@ const int = { type: 'integer' }
 export const BUILTIN_TOOLS: Anthropic.Tool[] = [
   {
     name: `${BUILTIN_SERVER}__read_file`,
-    description: 'Read a text file (or list a directory) with line numbers. Use offset/limit for large files. Must be called before edit_file/write_file on an existing file.',
+    description: 'Read a text file (or list a directory) with line numbers. Use offset/limit for large files. Must be called before edit_file/write_file on an existing file. Paths outside the workspace root need the user\'s approval.',
     input_schema: obj({ path: str, offset: int, limit: int }, ['path'])
   },
   {
@@ -70,7 +70,7 @@ export const BUILTIN_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: `${BUILTIN_SERVER}__web_fetch`,
-    description: 'Fetch an http(s) URL and return its text (HTML is stripped to plain text).',
+    description: 'Fetch a public http(s) URL and return its text (HTML is stripped to plain text). Needs the user\'s approval per host; localhost and private network addresses are refused.',
     input_schema: obj({ url: str }, ['url'])
   },
   {

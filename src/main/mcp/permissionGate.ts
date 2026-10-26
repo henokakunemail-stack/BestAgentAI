@@ -3,7 +3,7 @@
 // Pending prompts live in a shared registry keyed by callId (Anthropic tool_use ids are globally unique),
 // because the renderer answers with only { callId, approved, always }.
 import { readJson, updateJson } from '../storage/db'
-import { decide, ruleKeys, isReadOnly, type PermissionMode, type Rules } from './permissionPolicy'
+import { decide, ruleKeys, isReadOnly, type DecideOpts, type PermissionMode, type Rules } from './permissionPolicy'
 
 export type { PermissionMode }
 type Answer = 'allow' | 'deny' | 'always'
@@ -53,7 +53,7 @@ export class PermissionGate {
 
   isReadOnly = isReadOnly
 
-  private ask(callId: string, toolName: string, args: any, emit: (e: any) => void, canAlways: boolean): Promise<Answer> {
+  private ask(callId: string, toolName: string, args: any, emit: (e: any) => void, canAlways: boolean, note?: string): Promise<Answer> {
     // Registered synchronously, before any other await, so an abort can never miss it.
     return new Promise<Answer>((resolve) => {
       const done = (a: Answer) => {
@@ -65,24 +65,35 @@ export class PermissionGate {
       if (this.signal?.aborted) return done('deny')
       this.signal?.addEventListener('abort', onAbort, { once: true })
       pending.set(callId, done)
-      emit({ type: 'tool_permission_request', callId, toolName, args, canAlways })
+      emit({ type: 'tool_permission_request', callId, toolName, args, canAlways, note })
     })
   }
 
-  /** `beforeAsk` runs only when the user would be prompted; it may answer for them (PermissionRequest hook). */
-  async checkPermission(callId: string, toolName: string, args: any, emit: (e: any) => void, beforeAsk?: () => Promise<boolean | undefined>, ruleTool = toolName): Promise<boolean> {
+  /**
+   * `beforeAsk` runs only when the user would be prompted; it may answer for them (PermissionRequest hook).
+   * extra.policy: facts the name cannot tell (MCP readOnlyHint, path outside the workspace); extra.note: shown to the user with the prompt.
+   */
+  async checkPermission(
+    callId: string,
+    toolName: string,
+    args: any,
+    emit: (e: any) => void,
+    beforeAsk?: () => Promise<boolean | undefined>,
+    ruleTool = toolName,
+    extra: { policy?: DecideOpts; note?: string } = {}
+  ): Promise<boolean> {
     if (this.signal?.aborted) return false
     // ruleTool: what rules are written against (builtin: plain name, MCP: server-qualified name so two servers never share a rule)
     const keys = ruleKeys(ruleTool, args)
     const rules = await readJson<Rules>(RULES_FILE, { allow: [], deny: [] })
-    const d = decide(this.mode, toolName, keys, rules, ruleTool)
+    const d = decide(this.mode, toolName, keys, rules, ruleTool, extra.policy)
     if (d !== 'ask') return d === 'allow'
     const auto = await beforeAsk?.()
     if (auto !== undefined) return auto
 
     // "Always" only for a single simple command: a chain or $() would mint a rule broader than what the user read.
     const canAlways = keys.length === 1 && toolName !== 'exit_plan_mode'
-    const answer = await this.ask(callId, toolName, args, emit, canAlways)
+    const answer = await this.ask(callId, toolName, args, emit, canAlways, extra.note)
     if (answer === 'always' && canAlways) {
       // Locked read-modify-write: another prompt may be saving rules at the same time.
       await updateJson<Rules>(RULES_FILE, { allow: [], deny: [] }, (fresh) => {

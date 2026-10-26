@@ -23,6 +23,8 @@ export interface StreamEvent {
   options?: string[]
   /** tool_permission_request: false hides "always allow" (chained or substituting commands) */
   canAlways?: boolean
+  /** tool_permission_request: why approval is needed (read outside the workspace, external request) */
+  note?: string
   /** stream_reset: chars of the failed attempt to cut from the end of the assistant message */
   dropText?: number
   dropThinking?: number

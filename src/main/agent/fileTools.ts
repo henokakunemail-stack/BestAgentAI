@@ -2,6 +2,8 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { spawn, execFile } from 'node:child_process'
+import { lookup } from 'node:dns/promises'
+import { isIP } from 'node:net'
 
 const MAX_OUT = 30_000
 const SKIP_DIRS = new Set(['node_modules', '.git'])
@@ -9,6 +11,23 @@ const SKIP_DIRS = new Set(['node_modules', '.git'])
 // Keyed per run so a subagent reading a file never makes it look "read" for its parent.
 const readState = new Map<string, number>()
 const rk = (runId: string, abs: string) => `${runId}|${abs}`
+
+/** True when p (relative to root, or absolute) resolves to root or below. Lexical only: a symlink inside the root may still point out. */
+export function isInsideWorkspace(root: string, p: unknown): boolean {
+  if (typeof p !== 'string' || !p) return true // tools default to the root itself
+  const rel = path.relative(path.resolve(root), path.resolve(root, p))
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel))
+}
+
+/**
+ * Rule key for a read outside the workspace: "tool:outside:<folder>", so "always allow" covers that one folder, not every read.
+ * read_file: the file's folder; glob/grep: the searched folder itself.
+ */
+export function outsideReadRuleKey(tool: string, root: string, p: unknown): string {
+  const abs = path.resolve(root, String(p))
+  const dir = tool === 'read_file' ? path.dirname(abs) : abs
+  return `${tool}:outside:${process.platform === 'win32' ? dir.toLowerCase() : dir}`
+}
 
 export function resolveInWorkspace(root: string, p: unknown, opts: { mustBeInside?: boolean } = {}): string {
   if (typeof p !== 'string' || !p) throw new Error('"path" is required')
@@ -170,10 +189,64 @@ export function bashTool(root: string, a: any, signal?: AbortSignal): Promise<st
   })
 }
 
+/** Loopback, link-local, private (RFC 1918, CGNAT), multicast, reserved, unspecified; IPv6 incl. ULA, link-local and v4-mapped. */
+export function isPrivateAddress(ip: string): boolean {
+  const v = isIP(ip)
+  if (v === 4) {
+    const [a, b] = ip.split('.').map(Number)
+    return (
+      a === 0 || a === 10 || a === 127 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) || (a === 192 && b === 0) ||
+      (a === 198 && (b === 18 || b === 19)) ||
+      a >= 224 // multicast, reserved, broadcast
+    )
+  }
+  if (v !== 6) return true // not an address at all: refuse
+  const low = ip.toLowerCase()
+  const mapped = /^(?:0*:)*ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(low) || /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(low)
+  if (mapped) {
+    if (mapped[2] !== undefined) {
+      const hi = parseInt(mapped[1], 16), lo = parseInt(mapped[2], 16)
+      return isPrivateAddress(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`)
+    }
+    return isPrivateAddress(mapped[1])
+  }
+  if (low === '::' || low === '::1') return true
+  if (low.startsWith('64:ff9b:')) return true // NAT64: embeds a v4 we cannot vet cheaply
+  const first = parseInt(low.split(':')[0] || '0', 16)
+  return (first & 0xfe00) === 0xfc00 || (first & 0xffc0) === 0xfe80 || (first & 0xff00) === 0xff00 // fc00::/7, fe80::/10, ff00::/8
+}
+
+/** Throws unless every address the host resolves to is public. Blocks SSRF into localhost/LAN (cloud metadata, local MCP servers, routers). */
+export async function assertPublicHost(url: URL): Promise<void> {
+  const host = url.hostname.replace(/^\[|\]$/g, '').toLowerCase()
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) {
+    throw new Error(`Blocked: ${url.hostname} is a local/private host.`)
+  }
+  const addrs = isIP(host) ? [host] : (await lookup(host, { all: true }).catch(() => [])).map((r) => r.address)
+  if (!addrs.length) throw new Error(`Blocked: could not resolve ${url.hostname}.`)
+  const bad = addrs.find(isPrivateAddress)
+  if (bad) throw new Error(`Blocked: ${url.hostname} resolves to a private/loopback address (${bad}).`)
+}
+
 export async function webFetchTool(a: any, signal?: AbortSignal): Promise<string> {
-  const url = new URL(String(a.url ?? ''))
+  let url = new URL(String(a.url ?? ''))
   if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('Only http(s) URLs are allowed.')
-  const res = await fetch(url, { signal: AbortSignal.any([AbortSignal.timeout(20_000), ...(signal ? [signal] : [])]), headers: { 'user-agent': 'AI-Desktop/1.0' } })
+  const fetchSignal = AbortSignal.any([AbortSignal.timeout(20_000), ...(signal ? [signal] : [])])
+  // Redirects are followed by hand so every hop is vetted: a public URL may 302 to http://169.254.169.254/.
+  let res!: Response
+  for (let hop = 0; ; hop++) {
+    await assertPublicHost(url)
+    res = await fetch(url, { signal: fetchSignal, redirect: 'manual', headers: { 'user-agent': 'AI-Desktop/1.0' } })
+    const loc = res.headers.get('location')
+    if (res.status < 300 || res.status >= 400 || !loc) break
+    if (hop >= 5) throw new Error('Too many redirects.')
+    url = new URL(loc, url)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error(`Redirect to non-http(s) URL refused: ${url.protocol}`)
+  }
   const type = res.headers.get('content-type') ?? ''
   if (!/text|json|xml|javascript/i.test(type)) throw new Error(`Unsupported content-type: ${type || 'unknown'}`)
   let body = (await res.text()).slice(0, 1_000_000)

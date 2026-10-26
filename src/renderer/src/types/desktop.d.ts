@@ -9,6 +9,8 @@ export interface ToolCallUI {
   agentType?: string
   /** false: chained/substituting command, "always allow" would mint a rule broader than what was read */
   canAlways?: boolean
+  /** why this call needs approval (e.g. reads outside the workspace), shown with the prompt */
+  note?: string
 }
 
 export interface ChatMessage {

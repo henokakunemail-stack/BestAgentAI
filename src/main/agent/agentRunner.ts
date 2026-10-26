@@ -18,6 +18,8 @@ import { extractMemories, memoryPromptBlock } from './memoryExtractor'
 import { clientConfig, makeAnthropic } from './clientFactory'
 import { classifyError, retryDelayMs, stopAction, MAX_RETRIES } from './retryPolicy'
 import { BUILTIN_SERVER, BUILTIN_TOOLS, buildSpawnTool, EXIT_PLAN_TOOL, runBuiltin, isWriteTool } from './builtinTools'
+import { isInsideWorkspace, outsideReadRuleKey } from './fileTools'
+import type { DecideOpts } from '../mcp/permissionPolicy'
 import { loadAgents, agentCatalog, resolveModelAlias, type AgentDef } from './agentsLoader'
 import { randomUUID } from 'node:crypto'
 import { WorktreeManager } from './worktreeManager'
@@ -557,7 +559,23 @@ export class AgentRunner {
     // A hook "allow" must not bypass plan mode's read-only guarantee or the plan approval itself.
     const hookMayAllow = pre.permissionDecision === 'allow' && ctx.gate.mode !== 'plan' && originalName !== 'exit_plan_mode'
     if (!hookMayAllow) {
-      const ruleTool = serverName === BUILTIN_SERVER ? originalName : block.name // MCP rules are server-qualified
+      let ruleTool = serverName === BUILTIN_SERVER ? originalName : block.name // MCP rules are server-qualified
+      const policy: DecideOpts = {}
+      let note: string | undefined
+      if (serverName === BUILTIN_SERVER) {
+        // Read-only file tools are auto-allowed inside the workspace only; outside it the user is asked (per folder).
+        if (/^(read_file|glob|grep)$/.test(originalName) && !isInsideWorkspace(ctx.workspaceRoot, args.path)) {
+          policy.sensitive = true
+          ruleTool = outsideReadRuleKey(originalName, ctx.workspaceRoot, args.path)
+          note = `Reads outside the workspace root (${ctx.workspaceRoot})`
+        } else if (originalName === 'web_fetch') {
+          note = 'Sends a request to an external site; anything in the URL leaves this machine'
+        }
+      } else {
+        // MCP: the server's own readOnlyHint/destructiveHint beats the name heuristic when present.
+        const hint = mcpManager.readOnlyHint(serverName, originalName)
+        if (hint !== undefined) policy.readOnly = hint
+      }
       const approved = await ctx.gate.checkPermission(block.id, originalName, args, emitEvent, async () => {
         const r = await runHooks('PermissionRequest', block.name, { tool_input: args }, hookCtx)
         if (r.blocked || r.permissionDecision === 'deny') return false
@@ -565,7 +583,7 @@ export class AgentRunner {
         if (r.permissionDecision === 'allow' && originalName !== 'exit_plan_mode') return true
         void runHooks('Notification', '', { message: `Waiting for approval: ${block.name}` }, hookCtx)
         return undefined
-      }, ruleTool)
+      }, ruleTool, { policy, note })
       if (!approved) {
         await runHooks('PermissionDenied', block.name, { tool_input: args }, hookCtx)
         return fail(

@@ -175,7 +175,8 @@ export const App: React.FC = () => {
           status: isPerm ? 'pending_approval' : 'running',
           parentCallId: event.parentCallId,
           agentType: event.agentType,
-          canAlways: isPerm ? event.canAlways : undefined
+          canAlways: isPerm ? event.canAlways : undefined,
+          note: isPerm ? event.note : undefined
         }
         setMessages((prev) => {
           const last = prev[prev.length - 1]

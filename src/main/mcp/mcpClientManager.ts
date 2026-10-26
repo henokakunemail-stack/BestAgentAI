@@ -151,6 +151,20 @@ export class McpClientManager {
     }
   }
 
+  /**
+   * MCP tool annotations (spec: readOnlyHint / destructiveHint) as one answer: true = declared read-only, false = declared
+   * mutating or destructive, undefined = server said nothing (callers fall back to the name heuristic).
+   * Hints are advisory and come from the server, so a `false` is trusted (asks more) while a `true` only skips the prompt a
+   * read-only name would have skipped anyway.
+   */
+  readOnlyHint(serverName: string, toolName: string): boolean | undefined {
+    const t = this.servers.get(serverName)?.tools.find((x) => x.name === toolName)
+    const a = t?.annotations
+    if (!a || typeof a !== 'object') return undefined
+    if (a.destructiveHint === true) return false
+    return typeof a.readOnlyHint === 'boolean' ? a.readOnlyHint : undefined
+  }
+
   getAllTools(): Array<{ name: string; description?: string; inputSchema?: any; serverName: string }> {
     const catalog: any[] = []
 
@@ -179,7 +193,7 @@ export class McpClientManager {
         resetTimeoutOnProgress: true,
         signal
       })
-    const readOnly = isReadOnly(toolName)
+    const readOnly = this.readOnlyHint(serverName, toolName) ?? isReadOnly(toolName)
     let inst = this.servers.get(serverName)
     // Mid-reconnect: a read-only call may wait briefly for the server; a write fails now (no duplicated side effects).
     if (inst?.status === 'disconnected' && readOnly) inst = await this.waitConnected(serverName, 3_000, signal)

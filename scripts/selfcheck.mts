@@ -77,7 +77,7 @@ assert.ok(currentTokens([...two, { role: 'user', content: 'x'.repeat(3500) }], {
 assert.ok(shouldCompact(160_000) && !shouldCompact(159_999) && shouldCompact(80_000, 100_000))
 
 // permission policy (pure; the gate itself imports electron via storage/db.ts and is not covered)
-import { decide, ruleKey, isWriteLike } from '../src/main/mcp/permissionPolicy.ts'
+import { decide, ruleKey, isWriteLike, isReadOnly } from '../src/main/mcp/permissionPolicy.ts'
 const none = { allow: [], deny: [] }
 assert.equal(decide('plan', 'write_file', 'write_file', none), 'deny')
 assert.equal(decide('plan', 'read_file', 'read_file', none), 'allow')
@@ -132,6 +132,41 @@ assert.equal(decide('default', 'mcp_tool', ['mcp_tool'], { allow: ['mcp__a__mcp_
 assert.equal(decide('default', 'mcp_tool', ['mcp_tool'], { allow: ['mcp__a__mcp_tool'], deny: [] }, 'mcp__b__mcp_tool'), 'ask') // other server: no shared rule
 assert.equal(decide('default', 'spawn_agent', ['spawn_agent'], none), 'allow') // bookkeeping, not read-only
 assert.ok(!isWriteLike('spawn_agent'))
+
+// reads outside the workspace: still non-mutating, but never auto-allowed; "always" covers one folder only
+import { isInsideWorkspace, outsideReadRuleKey, isPrivateAddress, webFetchTool } from '../src/main/agent/fileTools.ts'
+assert.ok(isInsideWorkspace(root, 'src/a.ts') && isInsideWorkspace(root, '') && isInsideWorkspace(root, undefined) && isInsideWorkspace(root, '.'))
+assert.ok(!isInsideWorkspace(root, '../x') && !isInsideWorkspace(root, os.homedir()) && !isInsideWorkspace(root, path.join(root, '..', 'sibling')))
+assert.equal(decide('default', 'read_file', ['read_file'], none, 'read_file', { sensitive: true }), 'ask')
+assert.equal(decide('plan', 'read_file', ['read_file'], none, 'read_file', { sensitive: true }), 'ask') // plan mode asks, it does not deny a read
+assert.equal(decide('bypass', 'read_file', ['read_file'], none, 'read_file', { sensitive: true }), 'allow')
+assert.equal(decide('dontAsk', 'read_file', ['read_file'], none, 'read_file', { sensitive: true }), 'deny')
+const outKey = outsideReadRuleKey('read_file', root, path.join(os.homedir(), '.ssh', 'id_rsa'))
+assert.match(outKey, /^read_file:outside:.*\.ssh$/)
+assert.equal(outsideReadRuleKey('grep', root, os.homedir()).replace(/^grep:outside:/, ''), process.platform === 'win32' ? os.homedir().toLowerCase() : os.homedir())
+assert.equal(decide('default', 'read_file', [outKey], { allow: [outKey], deny: [] }, outKey, { sensitive: true }), 'allow')
+assert.equal(decide('default', 'read_file', [outKey], { allow: [], deny: ['read_file'] }, outKey, { sensitive: true }), 'deny')
+// MCP annotations beat the name heuristic
+assert.equal(decide('default', 'get_thing', ['get_thing'], none, 'mcp__a__get_thing', { readOnly: false }), 'ask') // name looks read-only, server says mutating
+assert.equal(decide('default', 'do_thing', ['do_thing'], none, 'mcp__a__do_thing', { readOnly: true }), 'allow') // name says nothing, server says read-only
+assert.equal(decide('plan', 'do_thing', ['do_thing'], none, 'mcp__a__do_thing', { readOnly: true }), 'allow')
+assert.equal(decide('plan', 'get_thing', ['get_thing'], none, 'mcp__a__get_thing', { readOnly: false }), 'deny')
+// web_fetch: never auto-allowed, rules per host, private targets refused before any request
+assert.ok(!isReadOnly('web_fetch') && isReadOnly('read_file') && !isWriteLike('web_fetch'))
+assert.deepEqual(ruleKeys('web_fetch', { url: 'https://Docs.Example.com/x?y=1' }), ['web_fetch:docs.example.com'])
+assert.deepEqual(ruleKeys('web_fetch', { url: 'nope' }), [])
+assert.equal(decide('default', 'web_fetch', ['web_fetch:docs.example.com'], none), 'ask')
+assert.equal(decide('default', 'web_fetch', ['web_fetch:docs.example.com'], { allow: ['web_fetch:docs.example.com'], deny: [] }), 'allow')
+assert.equal(decide('default', 'web_fetch', ['web_fetch:evil.example'], { allow: ['web_fetch:docs.example.com'], deny: [] }), 'ask')
+for (const ip of ['127.0.0.1', '127.9.9.9', '10.1.2.3', '172.16.0.1', '172.31.255.255', '192.168.1.1', '169.254.169.254', '100.64.0.1', '0.0.0.0', '224.0.0.1', '255.255.255.255', '::1', '::', 'fe80::1', 'fd12::1', 'fc00::1', 'ff02::1', '::ffff:127.0.0.1', '::ffff:7f00:1', '::ffff:c0a8:101', 'not-an-ip'])
+  assert.ok(isPrivateAddress(ip), `private: ${ip}`)
+for (const ip of ['8.8.8.8', '1.1.1.1', '172.32.0.1', '172.15.0.1', '100.128.0.1', '2606:4700::1111', '::ffff:8.8.8.8']) assert.ok(!isPrivateAddress(ip), `public: ${ip}`)
+await assert.rejects(webFetchTool({ url: 'http://127.0.0.1:1/' }), /Blocked/)
+await assert.rejects(webFetchTool({ url: 'http://localhost:1/' }), /Blocked/)
+await assert.rejects(webFetchTool({ url: 'http://[::1]:1/' }), /Blocked/)
+await assert.rejects(webFetchTool({ url: 'http://169.254.169.254/latest/meta-data/' }), /Blocked/)
+await assert.rejects(webFetchTool({ url: 'http://foo.internal/' }), /Blocked/)
+await assert.rejects(webFetchTool({ url: 'file:///etc/passwd' }), /http/)
 
 // frontmatter lists + agents loader
 import { parseList } from '../src/main/agent/skillsLoader.ts'

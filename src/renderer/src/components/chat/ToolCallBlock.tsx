@@ -106,7 +106,7 @@ export const ToolCallBlock: React.FC<ToolCallBlockProps> = ({ toolCall, nested =
       {/* Permission Gate approval buttons */}
       {isPending && onConfirm && (
         <div className="mt-2.5 p-2 bg-amber-500/10 border border-amber-500/20 rounded flex items-center justify-between">
-          <span className="text-[11px] text-amber-300">{isPlanApproval ? 'Approve this plan to start editing' : 'Action requires authorization'}</span>
+          <span className="text-[11px] text-amber-300 font-sans">{isPlanApproval ? 'Approve this plan to start editing' : toolCall.note || 'Action requires authorization'}</span>
           <div className="flex gap-2">
             <button
               onClick={() => onConfirm(toolCall.callId, false)}
