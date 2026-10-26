@@ -27,11 +27,6 @@ export const IPC_CHANNELS = {
   TOOL_CONFIRM_DECISION: 'tool:confirm-decision',
   USER_INPUT_ANSWER: 'tool:user-input-answer',
 
-  // MCP REA
-  REA_GET_STATUS: 'rea:get-status',
-  REA_INITIALIZE: 'rea:initialize',
-  REA_EXECUTE: 'rea:execute',
-
   // Codex Goals & Memory
   GOALS_GET_ALL: 'goals:get-all',
   GOALS_ADD: 'goals:add',

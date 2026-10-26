@@ -78,14 +78,6 @@ export interface SkillInspect {
   candidates: SkillCandidate[]
 }
 
-export interface ReaStatus {
-  initialized: boolean
-  jdkPath: string
-  jarFound: boolean
-  toolsCount: number
-  error?: string
-}
-
 export interface GoalItem {
   id: string
   text: string
@@ -158,11 +150,6 @@ export interface AiDesktopApi {
     inspectGithub: (url: string) => Promise<McpGithubInspect>
     confirmTool: (callId: string, approved: boolean, always?: boolean) => void
     answerInput: (callId: string, answer: string) => void
-  }
-  rea: {
-    getStatus: () => Promise<ReaStatus>
-    initialize: () => Promise<boolean>
-    execute: (tool: string, args: any) => Promise<any>
   }
   goals: {
     getAll: () => Promise<GoalItem[]>

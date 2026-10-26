@@ -7,7 +7,6 @@ import { toggleLauncherWindow } from '../windows/launcherWindow'
 import { agentRunner } from '../agent/agentRunner'
 import { PermissionGate } from '../mcp/permissionGate'
 import { mcpManager } from '../mcp/mcpClientManager'
-import { reaClient } from '../mcp/reaClient'
 import { getGoals, addGoal, toggleGoal, deleteGoal, updateGoal, GoalStatus } from '../storage/goalsStore'
 import { randomBytes } from 'node:crypto'
 import { readDesktopConfig, addServerConfigs, removeServerConfig, McpServerConfig } from '../mcp/configWatcher'
@@ -389,19 +388,6 @@ export function registerIpcHandlers(): () => Promise<void> {
   })
 
   ipcMain.handle(IPC_CHANNELS.MCP_INSPECT_GITHUB, async (_, url: string) => inspectMcpSource(asText(url, 500)))
-
-  // MCP REA
-  ipcMain.handle(IPC_CHANNELS.REA_GET_STATUS, async () => {
-    return await reaClient.getStatus()
-  })
-
-  ipcMain.handle(IPC_CHANNELS.REA_INITIALIZE, async () => {
-    return await reaClient.initialize()
-  })
-
-  ipcMain.handle(IPC_CHANNELS.REA_EXECUTE, async (_, { tool, args }) => {
-    return await reaClient.executeTool(tool, args)
-  })
 
   // Goals (Codex)
   ipcMain.handle(IPC_CHANNELS.GOALS_GET_ALL, async () => {

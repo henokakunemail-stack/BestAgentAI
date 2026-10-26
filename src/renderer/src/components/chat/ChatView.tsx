@@ -35,7 +35,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
         <h1 className="text-base font-semibold text-zinc-100">AI Desktop</h1>
         <p className="text-xs text-zinc-400 max-w-sm mt-1">
-          Claude Code terminal execution, Antigravity multi-agent planning, Codex SQLite persistence, and native MCP REA.
+          Claude Code terminal execution, Antigravity multi-agent planning, Codex persistence, and any MCP server you connect.
         </p>
 
         <div className="grid grid-cols-2 gap-2 mt-6 max-w-md w-full text-left">
@@ -52,10 +52,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
           <div className="p-3 bg-zinc-900/60 border border-zinc-800 rounded-lg">
             <div className="flex items-center gap-1.5 text-xs font-medium text-blue-400">
               <Terminal className="w-3.5 h-3.5" />
-              <span>Claude Code & REA</span>
+              <span>Claude Code & MCP</span>
             </div>
             <p className="text-[11px] text-zinc-400 mt-1">
-              Integrated PTY, RTK token compression, and REA reverse engineering engine.
+              Integrated PTY, RTK token compression, and MCP servers added from Settings.
             </p>
           </div>
         </div>

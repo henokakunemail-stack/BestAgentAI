@@ -40,11 +40,6 @@ export const api = {
       ipcRenderer.send(IPC_CHANNELS.TOOL_CONFIRM_DECISION, { callId, approved, always }),
     answerInput: (callId: string, answer: string) => ipcRenderer.send(IPC_CHANNELS.USER_INPUT_ANSWER, { callId, answer })
   },
-  rea: {
-    getStatus: () => ipcRenderer.invoke(IPC_CHANNELS.REA_GET_STATUS),
-    initialize: () => ipcRenderer.invoke(IPC_CHANNELS.REA_INITIALIZE),
-    execute: (tool: string, args: any) => ipcRenderer.invoke(IPC_CHANNELS.REA_EXECUTE, { tool, args })
-  },
   goals: {
     getAll: () => ipcRenderer.invoke(IPC_CHANNELS.GOALS_GET_ALL),
     add: (text: string) => ipcRenderer.invoke(IPC_CHANNELS.GOALS_ADD, text),

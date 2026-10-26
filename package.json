@@ -2,7 +2,7 @@
   "name": "ai-desktop",
   "version": "1.0.0",
   "type": "module",
-  "description": "AI Desktop - Powerhouse Client with Claude Code, Antigravity, Codex & MCP REA",
+  "description": "AI Desktop - Powerhouse Client with Claude Code, Antigravity, Codex & MCP",
   "main": "./out/main/index.js",
   "author": "Henok",
   "scripts": {

@@ -5,7 +5,7 @@ AI Desktop is a desktop application combining:
 2. **Claude Code Execution Engine**: Real PTY terminal (`@lydell/node-pty`, `child_process` fallback), RTK (Rust Token Killer) output compression, permission modes, `hooks.json` hooks, context compaction, parallel read-only tool batches, `AGENTS.md`/`CLAUDE.md`/`GEMINI.md` loading, and local markdown skills loader (`~/.claude/skills`).
 3. **Antigravity Multi-Agent Architecture**: Autonomous loop with `builtin__update_plan`, self-healing hints on tool errors, and subagents (`builtin__spawn_agent`, depth 1, max 5 per run, optional git-worktree isolation).
 4. **Codex Persistence & Context Slicing**: `apply_patch` (`*** Begin Patch`), goals with status and token budget plus auto-continuation, queued messages, and long-term memory extracted after each run. All state is JSON files in Electron `userData` (not SQLite).
-5. **MCP REA (Reverse Engineer Anything)**: Stdio MCP client with JDK 21 auto-binding and layered timeouts (`MCP_TIMEOUT` connect, default 90s; `MCP_TOOL_TIMEOUT` per call, default 120s).
+5. **MCP Client**: Connects to any MCP server (stdio, SSE, streamable HTTP) with auto-reconnect and layered timeouts (`MCP_TIMEOUT` connect, default 90s; `MCP_TOOL_TIMEOUT` per call, default 120s). Server tools are offered to the model as `<server>__<tool>`.
 
 ---
 
@@ -31,12 +31,8 @@ npm run build
 
 ---
 
-## MCP REA Integration
-Configured automatically for `rea-agents@6.7.0`:
-- **Binary**: `C:\Users\henok\AppData\Roaming\npm\node_modules\rea-agents\scripts\rea.mjs --mcp`
-- **JDK 21**: `C:\Program Files\Microsoft\jdk-21.0.12.101-hotspot\bin`
-- **JADX Headless JAR**: `C:\tools\jadx-headless-mcp-0.7.1-all.jar`
-- **Router tools** (REA exposes ~207 tools; only two are sent to the model): `rea_search_tools` (keyword search over the real tool list) and `rea_call_tool` (`{name, arguments}`). Both fail loudly if REA is not connected.
+## MCP Servers
+No server is bundled. Add servers in **Settings → MCP Servers** by pasting a `claude_desktop_config.json`-style snippet or a GitHub URL, or point `mcpConfigPath` at an existing config file. Each server's tools appear as `<server>__<tool>`; the server's `readOnlyHint`/`destructiveHint` annotations decide whether a call needs approval.
 
 ---
 

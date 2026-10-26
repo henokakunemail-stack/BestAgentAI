@@ -14,7 +14,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onToggleTerminal }) => {
         </div>
         <span className="font-semibold tracking-wide">AI Desktop</span>
         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 font-mono">
-          Opus 5.5 + REA
+          Opus 5.5
         </span>
       </div>
 

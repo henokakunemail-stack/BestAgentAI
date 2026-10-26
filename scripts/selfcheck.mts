@@ -173,7 +173,7 @@ import { parseList } from '../src/main/agent/skillsLoader.ts'
 import { loadAgents, mapTools, mapToolName } from '../src/main/agent/agentsLoader.ts'
 assert.deepEqual(parseList('[Read, "Grep"]'), ['Read', 'Grep'])
 assert.deepEqual(parseFrontmatter('---\ntools:\n  - Read\n  - Grep\nname: x\n---\n').meta, { tools: 'Read, Grep', name: 'x' })
-assert.equal(mapToolName('mcp__rea__open_binary'), 'rea__open_binary')
+assert.equal(mapToolName('mcp__github__create_issue'), 'github__create_issue')
 assert.deepEqual(mapTools(['Read', 'Edit', 'MultiEdit', 'Task', 'exit_plan_mode']).sort(), ['builtin__edit_file', 'builtin__read_file', 'builtin__spawn_agent'].sort()) // exit_plan_mode is never whitelisted
 assert.ok(!mapTools(['ExitPlanMode']).includes('builtin__exit_plan_mode'))
 const agRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'agents-'))

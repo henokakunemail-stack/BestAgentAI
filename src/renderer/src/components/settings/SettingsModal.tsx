@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { X, Cpu, RefreshCw, Sparkles, Check, Shield, Plus, Trash2, Webhook } from 'lucide-react'
 import { McpServerStatus, AgentItem, SkillItem, HookConfigItem } from '../../../../preload/index.d'
 import { McpServerCard } from './McpServerCard'
-import { ReaStatusCard } from './ReaStatusCard'
 import { SkillInstaller, McpAdder } from './InstallPanels'
 import { ProvidersSection, Provider } from './ProvidersSection'
 
@@ -353,11 +352,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </div>
             {skillMsg && <div className="text-amber-400 text-[11px]">{skillMsg}</div>}
             <SkillInstaller hasWorkspace={!!workspaceRoot} onDone={refreshSkills} />
-          </div>
-
-          {/* MCP REA Section */}
-          <div className="border-t border-zinc-800/80 pt-4">
-            <ReaStatusCard />
           </div>
 
           {/* Standard MCP Servers */}

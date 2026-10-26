@@ -137,7 +137,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               setDismissed(false)
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Reply to AI Desktop... (e.g. /rea, /graphify, inspect binary, or ask code)"
+            placeholder="Reply to AI Desktop... (e.g. /plan, /compact, or ask about your code)"
             className="w-full bg-transparent text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none resize-none max-h-44 font-sans leading-relaxed px-1"
           />
 

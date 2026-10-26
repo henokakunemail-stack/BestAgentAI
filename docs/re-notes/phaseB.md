@@ -5,7 +5,7 @@ Status: B1-B6 selesai di kode; typecheck, selfcheck, build hijau. Diuji lewat `s
 ## Yang dibuat
 | Id | Perubahan | File utama |
 |----|-----------|------------|
-| B1 | Abort sejak awal `run()`, hook/MCP/worktree menghormati `AbortSignal`, Stop hanya menjeda goal milik sesi, sesi di-claim `busy` sebelum `await` pertama | `agentRunner.ts`, `hooks.ts`, `mcpClientManager.ts`, `reaClient.ts`, `registerHandlers.ts` |
+| B1 | Abort sejak awal `run()`, hook/MCP/worktree menghormati `AbortSignal`, Stop hanya menjeda goal milik sesi, sesi di-claim `busy` sebelum `await` pertama | `agentRunner.ts`, `hooks.ts`, `mcpClientManager.ts`, `registerHandlers.ts` |
 | B2 | `retryPolicy.ts` (classifyError, retryDelayMs, stopAction, backoffMs), SDK `maxRetries:0`, idle watchdog 90 s, `stream_reset`/`retrying`, penanganan `max_tokens`/`refusal`/`pause_turn`, pesan maxTurns | `retryPolicy.ts`, `agentRunner.ts`, `clientFactory.ts`, `App.tsx` |
 | B3 | `modelLimits.ts`, estimasi token tanpa base64, breakpoint cache pesan, urutan tool stabil, `billableTokens`, `capTurnResults`, `pruneOldToolResults`, compaction dengan retry + reaktif saat overflow, gambar MCP sebagai blok `image` | `modelLimits.ts`, `compactor.ts`, `agentRunner.ts` |
 | B4 | `splitCommand`/`ruleKeys` (rantai perintah, `$()`, backtick, redirect file), `decide` multi-kunci, aturan MCP ber-namespace, `canAlways`, `spawn_agent` tidak read-only | `permissionPolicy.ts`, `permissionGate.ts`, `builtinTools.ts`, `ToolCallBlock.tsx` |

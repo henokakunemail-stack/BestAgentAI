@@ -6,7 +6,6 @@ import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import { readDesktopConfig, McpServerConfig } from './configWatcher'
 import { transportSpec } from './mcpConfig'
 import { stableJson, maskConfig } from '../install/githubSource'
-import { reaClient } from './reaClient'
 import { isReadOnly } from './permissionPolicy'
 import { backoffMs } from '../agent/retryPolicy'
 import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js'
@@ -167,25 +166,15 @@ export class McpClientManager {
 
   getAllTools(): Array<{ name: string; description?: string; inputSchema?: any; serverName: string }> {
     const catalog: any[] = []
-
-    // Standard connected servers
     for (const inst of this.servers.values()) {
       if (inst.status === 'connected') {
         catalog.push(...inst.tools)
       }
     }
-
-    // Append REA router tools
-    catalog.push(...reaClient.getRouterTools())
-
     return catalog
   }
 
   async executeTool(serverName: string, toolName: string, args: Record<string, any>, signal?: AbortSignal): Promise<any> {
-    if (serverName === 'rea' || toolName.startsWith('rea_')) {
-      return await reaClient.executeTool(toolName, args, signal)
-    }
-
     const call = (inst: ServerInstance) =>
       // Per-call wall clock; progress notifications extend it (idle-watchdog behaviour)
       inst.client.callTool({ name: toolName, arguments: args }, undefined, {
